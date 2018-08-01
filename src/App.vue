@@ -1,11 +1,8 @@
 <template>
     <div id="app">
-        <button @click="twocol">2 col</button>
-        <button @click="threecol">3 col</button>
-        <button @click="fourcol">4 col</button>
-        <div class="row" :key="i" v-for="(row, i) in row_photos">
-            <div class="col" v-for="(photo,j) in row" :key="j">
-                <div :style="{backgroundImage: 'url(' + photo.post_url + ')'}" :class="photo.portrait === true ? 'portrait' : '' " ></div>
+        <div class="row" :key="i" v-for="(row, i) in row_photos" :style="rowStyle">
+            <div class="col" v-for="(photo,j) in row" :key="j" :style="colStyle">
+                <div :style="[{backgroundImage: 'url(' + photo.post_url + ')'}]" ></div>
             </div>
         </div>
     </div>
@@ -13,14 +10,51 @@
 
 <script>
     //TODO - Add on resize : change nbCol (+ recalc ?)
-    //TODO - Remove useless Code
-    //TODO - Add parameters : breakpoints, hauteur etc
+    //TODO FIND A WAY TO CHANGE PORTRAIT STYLE
     /*eslint no-console: 0*/
     import Photos from './photos.json';
 
     export default {
         name: 'app',
+        props: {
+            nbCol: {
+                default: 4,
+                type: Number
+            },
+            breakpoints: {
+                type: Array,
+                default: () => [{
+                        width:'576',
+                        nbCol: 2
+                    },
+                    {
+                        width:'768',
+                        nbCol: 3
+                    },
+                    {
+                        width:'992',
+                        nbCol: 4
+                    }]
+            },
+            rowHeight: {
+                default: 250,
+                type: Number
+            },
+            colPadding: {
+                default: 5,
+                type: Number
+            }
+        },
         computed: {
+            colStyle () {
+                return 'padding: ' + this.colPadding + 'px ' + this.colPadding/2 + 'px' ;
+            },
+            rowStyle () {
+                return 'height: ' + (this.rowHeight+this.colPadding) + 'px' ;
+            },
+            portraitStyle () {
+                return this.portrait ? 'height: ' + (this.rowHeight*2+this.colPadding)+ 'px !important' : '';
+            },
             row_photos() {
                 let rphotos = [];
                 let row = [];
@@ -35,9 +69,8 @@
             },
         },
         data () {
-        return {
-            nbCol: 4,
-            photos: []
+            return {
+                photos: []
             }
         },
         methods: {
@@ -51,7 +84,7 @@
                     this.addPicture();
                 }
             },
-            addPicture(){
+            addPicture(){ //TODO Optimize this part (it looks ugly) + workout first photo as portrait bug
                 let height = this.randomNumber();
                 let width = this.randomNumber();
                 //Si tableau non vide
@@ -76,46 +109,13 @@
                 }
 
             },
-            test(){
-                fetch('http://example.com/movies.json', {
-                        credentials: 'omit'
-                    })
-                    .then(function(response) {
-                        return response.json();
-                    })
-                    .then(function(myJson) {
-                        console.log(myJson);
-                    });
-            },
-            fileExists(url) {
-                console.log('test');
-                if(url){
-                    var req = new XMLHttpRequest();
-                    req.open('GET', url, false);
-                    req.send();
-                    return req.status==200;
-                } else {
-                    return false;
-                }
-            },
-            removeEmpty(){
+            moveEmpty(){
                 console.log('Remove Empty');
                 this.photos = this.photos.filter((photo) => {
                    return photo.post_url !== ''
                 });
-                /*
-                this.photos.forEach((photo, index) => {
-                    console.log("before splice : " + this.photos[index].post_url);
-                    if (photo.post_url === '') {
-                        this.photos.splice(index, 1);
-                    }
-                    this.$nextTick(() => {
-                        console.log("after splice " + this.photos[index].post_url);
-                    })
-                });
-                */
             },
-            addEmpty(){ //TODO See if this could be rethinked
+            addEmpty(){ //TODO See if this could be rethinked by using reduce
                 console.log('Add empty');
                 const empty = {
                     post_url: '',
@@ -134,69 +134,28 @@
                     return photos;
                 }, []);
                 */
-                /*
-                this.photos.reduce((accumulator, currentValue, currentIndex, array) => {
-                   if(currentValue.portrait) {
-                       //array.
-                   }
-                });
-                */
-                /*
-                this.photos.forEach((photo, index) => {
-                    if (photo.portrait == true) {
-                        this.photos.splice(index + this.nbCol, 0, empty);
+            },
+            resized(width){ //TODO Add throttle
+                this.breakpoints.forEach( (breakpoint) => {
+                    if(width >= breakpoint.width){
+                        this.nbCol = breakpoint.nbCol;
                     }
                 })
-                */
-            },
-            twocol(){
-                this.nbCol = 2;
-                this.removeEmpty();
-                this.addEmpty();
-            },
-            threecol(){
-                this.nbCol = 3;
-                this.addEmpty(this.removeEmpty())
-            },
-            fourcol(){
-                this.nbCol = 4;
-                this.addEmpty(this.removeEmpty())
             }
         },
         mounted() {
-            this.fileExists('photos.json');
             this.getPictures();
             this.getPictures();
             this.getPictures();
             this.getPictures();
             window.addEventListener('resize', () => {
-                console.log(window.innerWidth);
-                if(window.innerWidth < '500px'){
-                    this.nbCol = 3;
-                }
+                this.resized(window.innerWidth)
             });
             window.addEventListener('scroll', () => {
                 if ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight - 250) {
                     this.getPictures();
                 }
             });
-        }
-    }
-
-    function throttle(callback, wait, context = this) {
-        let timeout = null
-        let callbackArgs = null
-
-        const later = () => {
-            callback.apply(context, callbackArgs)
-            timeout = null
-        }
-
-        return function() {
-            if (!timeout) {
-                callbackArgs = arguments
-                timeout = setTimeout(later, wait)
-            }
         }
     }
 </script>
@@ -208,11 +167,10 @@
 
     .row {
         display: flex;
-        height: 255px;
     }
+
     .row .col {
         max-width: 100%;
-        padding: 5px 2.5px;
         flex-grow: 1;
     }
 
@@ -221,9 +179,5 @@
         background-position: center;
         background-size: cover;
         height: 250px;
-    }
-
-    .portrait {
-        height: 505px !important;
     }
 </style>
