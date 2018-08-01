@@ -115,17 +115,25 @@
                 });
                 */
             },
-            addEmpty(){
+            addEmpty(){ //TODO See if this could be rethinked
                 console.log('Add empty');
                 const empty = {
                     post_url: '',
                     portrait: false,
                 };
+                this.photos.forEach((photo, index) => {
+                    if( photo.portrait ) {
+                        this.photos.splice(index + this.nbCol, 0, empty);
+                        index--;
+                    }
+                })
+                /*
                 this.photos = this.photos.reduce( (photos, photo, index) => {
                     photos.push( photo );
                     if( photo.portrait ) { photos.splice(index + this.nbCol, 0, empty); }
                     return photos;
                 }, []);
+                */
                 /*
                 this.photos.reduce((accumulator, currentValue, currentIndex, array) => {
                    if(currentValue.portrait) {
